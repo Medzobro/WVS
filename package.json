@@ -1,0 +1,13 @@
+{
+  "name": "bugbounty-recon-platform",
+  "version": "1.0.0",
+  "description": "منصة احترافية لفحص الأمان لأنظمة Bug Bounty",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  }
+}
