@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bug Bounty Recon Pro — أداة الاستطلاع الأمني</title>
+<style>
+/* ── نفس التنسيقات السابقة بالكامل بدون تغيير ── */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Tajawal:wght@300;400;500;700;900&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg:      #03050a;
+  --panel:   #070b12;
+  --card:    #090e18;
+  --border:  #0f1e2e;
+  --border2: #162436;
+  --cyan:    #00e5ff;
+  --green:   #00ff9d;
+  --red:     #ff3356;
+  --orange:  #ff8c00;
+  --yellow:  #ffe500;
+  --purple:  #bd00ff;
+  --blue:    #4488ff;
+  --text:    #a8c8e0;
+  --dim:     #2a4055;
+  --mono:    'Share Tech Mono', monospace;
+  --head:    'Orbitron', sans-serif;
+  --ar:      'Tajawal', sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ar);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,229,255,0.07) 0%, transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0px, transparent 49px, rgba(15,30,46,0.4) 49px, rgba(15,30,46,0.4) 50px),
+    repeating-linear-gradient(90deg, transparent 0px, transparent 49px, rgba(15,30,46,0.3) 49px, rgba(15,30,46,0.3) 50px);
+}
+body::after {
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);
+}
+
+/* ═══ HEADER ═══ */
+header {
+  padding: 36px 20px 0;
+  text-align: center;
+  position: relative;
+}
+.hex-logo { display:inline-flex;flex-direction:column;align-items:center;gap:10px; }
+.hex-ring { position:relative;width:80px;height:80px;display:flex;align-items:center;justify-content:center; }
+.hex-ring svg { position:absolute;inset:0;animation:spin-ring 12s linear infinite; }
+@keyframes spin-ring { to { transform:rotate(360deg); } }
+.hex-inner { font-size:1.8rem;filter:drop-shadow(0 0 12px var(--cyan));animation:pulse-glow 2s ease-in-out infinite;z-index:1; }
+@keyframes pulse-glow {
+  0%,100% { filter:drop-shadow(0 0 8px var(--cyan)); }
+  50% { filter:drop-shadow(0 0 20px var(--cyan)) drop-shadow(0 0 40px rgba(0,229,255,0.3)); }
+}
+.brand-name { font-family:var(--head);font-size:clamp(1.4rem,4vw,2rem);font-weight:900;letter-spacing:8px;color:var(--cyan);text-shadow:0 0 30px rgba(0,229,255,0.4);line-height:1; }
+.brand-sub { font-family:var(--mono);font-size:0.65rem;color:var(--dim);letter-spacing:4px;margin-top:4px; }
+.header-stats { display:flex;justify-content:center;gap:30px;margin-top:20px;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border); }
+.hstat { display:flex;flex-direction:column;align-items:center;gap:2px; }
+.hstat-val { font-family:var(--head);font-size:1.1rem;font-weight:700;color:var(--cyan); }
+.hstat-lbl { font-family:var(--mono);font-size:0.6rem;color:var(--dim);letter-spacing:2px; }
+
+/* ═══ MAIN ═══ */
+.container { max-width:960px;margin:0 auto;padding:24px 16px 80px; }
+
+/* ═══ PANEL ═══ */
+.panel { background:var(--panel);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden; }
+.panel-head { background:linear-gradient(90deg,rgba(0,229,255,0.06),transparent);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px; }
+.panel-head-icon { font-size:0.9rem; }
+.panel-head-title { font-family:var(--mono);font-size:0.7rem;color:var(--cyan);letter-spacing:3px;text-transform:uppercase; }
+.panel-body { padding:18px; }
+
+/* ═══ TARGET INPUT ═══ */
+.target-row { display:flex;gap:10px;align-items:stretch;flex-wrap:wrap; }
+.target-label { background:rgba(0,229,255,0.06);border:1px solid var(--border2);border-right:none;border-radius:6px 0 0 6px;padding:0 16px;display:flex;align-items:center;font-family:var(--mono);font-size:0.75rem;color:var(--cyan);white-space:nowrap; }
+#urlInput { flex:1;min-width:200px;background:rgba(0,0,0,0.5);border:1px solid var(--border2);border-left:none;border-radius:0 6px 6px 0;color:#e0f0ff;font-family:var(--mono);font-size:0.88rem;padding:13px 16px;outline:none;transition:all 0.3s;direction:ltr; }
+#urlInput:focus { border-color:rgba(0,229,255,0.35);box-shadow:0 0 0 3px rgba(0,229,255,0.07); }
+#urlInput::placeholder { color:var(--dim); }
+.btn-scan, .btn-stop {
+  background:linear-gradient(135deg, rgba(0,229,255,0.12), rgba(0,229,255,0.04));
+  border:1px solid rgba(0,229,255,0.35);
+  color:var(--cyan);
+  font-family:var(--head);
+  font-size:0.72rem;
+  font-weight:700;
+  letter-spacing:3px;
+  padding:13px 32px;
+  border-radius:6px;
+  cursor:pointer;
+  transition:all 0.3s;
+  white-space:nowrap;
+  position:relative;
+  overflow:hidden;
+}
+.btn-stop { border-color: rgba(255,51,86,0.35); color: var(--red); }
+.btn-scan::before, .btn-stop::before {
+  content:'';
+  position:absolute;
+  top:0;left:-100%;
+  width:100%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  animation:scan-line 2s linear infinite;
+}
+.btn-stop::before { background:linear-gradient(90deg,transparent,var(--red),transparent); }
+@keyframes scan-line { to { left:200%; } }
+.btn-scan:hover, .btn-stop:hover { box-shadow:0 0 25px rgba(0,229,255,0.2);transform:translateY(-1px); }
+.btn-stop:hover { box-shadow:0 0 25px rgba(255,51,86,0.2); }
+.btn-scan:disabled, .btn-stop:disabled { border-color:var(--dim);color:var(--dim);cursor:not-allowed;transform:none;box-shadow:none; }
+.btn-scan:disabled::before, .btn-stop:disabled::before { display:none; }
+
+/* ═══ MODULES (غير مستخدمة حالياً) نتركها للشكل الجمالي فقط ═══ */
+.mod-grid { display:grid;grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));gap:8px;margin-top:16px; }
+.mod-card { border:1px solid var(--border);border-radius:6px;padding:10px 14px;cursor:default;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.2); }
+.mod-card.on { border-color:rgba(0,229,255,0.25);background:rgba(0,229,255,0.04); }
+.mod-card input { display:none; }
+.mod-led { width:7px;height:7px;border-radius:50%;background:var(--dim);flex-shrink:0; }
+.mod-card.on .mod-led { background:var(--green);box-shadow:0 0 8px var(--green);animation:led-pulse 2s ease-in-out infinite; }
+@keyframes led-pulse { 0%,100% { box-shadow:0 0 4px var(--green); } 50% { box-shadow:0 0 12px var(--green); } }
+.mod-txt { font-family:var(--mono);font-size:0.7rem;color:var(--dim); }
+.mod-card.on .mod-txt { color:var(--text); }
+.mod-badge { margin-right:auto;font-family:var(--mono);font-size:0.55rem;padding:1px 5px;border-radius:2px;background:rgba(0,229,255,0.08);color:var(--cyan);border:1px solid rgba(0,229,255,0.15);display:none; }
+.mod-card.on .mod-badge { display:block; }
+
+/* ═══ PROGRESS ═══ */
+.prog-wrap { margin-top:16px; }
+.prog-info { display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.65rem;color:var(--dim);margin-bottom:6px; }
+.prog-info .active-mod { color:var(--cyan); }
+.prog-track { height:3px;background:var(--border);border-radius:2px;overflow:hidden;position:relative; }
+.prog-fill { height:100%;width:0%;background:linear-gradient(90deg,var(--cyan) 0%,var(--blue) 50%,var(--cyan) 100%);background-size:200% 100%;animation:prog-anim 1.5s linear infinite;transition:width 0.5s ease;border-radius:2px; }
+@keyframes prog-anim { to { background-position:-200% 0; } }
+
+/* ═══ TERMINAL ═══ */
+.term-chrome { background:#040810;border-bottom:1px solid var(--border);padding:9px 14px;display:flex;align-items:center;gap:8px; }
+.term-dots { display:flex;gap:5px; } .tdot { width:10px;height:10px;border-radius:50%; }
+.tdot.r { background:#3a1010; } .tdot.y { background:#3a3010; } .tdot.g { background:#0a3a18; }
+.term-title { flex:1;text-align:center;font-family:var(--mono);font-size:0.65rem;color:var(--dim); }
+.term-badge { font-family:var(--mono);font-size:0.6rem;padding:2px 8px;border-radius:3px; }
+.term-badge.idle { background:rgba(42,64,85,0.5);color:var(--dim); }
+.term-badge.live { background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,0.2);animation:blink 1.2s step-end infinite; }
+.term-badge.done { background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.2); }
+@keyframes blink { 50% { opacity:0.4; } }
+.term-body { background:#020408;padding:14px 18px;font-family:var(--mono);font-size:0.76rem;min-height:260px;max-height:400px;overflow-y:auto;line-height:1.85;direction:ltr; }
+.term-body::-webkit-scrollbar { width:3px; } .term-body::-webkit-scrollbar-thumb { background:var(--border2);border-radius:2px; }
+.tl { display:flex;gap:0; } .t-ts { color:var(--dim);margin-right:10px;flex-shrink:0;font-size:0.68rem;opacity:0.6; }
+.t-ok   { color:var(--green); } .t-err  { color:var(--red); } .t-warn { color:var(--orange); } .t-info { color:var(--cyan); } .t-dim  { color:var(--dim); } .t-head { color:#fff;font-size:0.8rem; } .t-crit { color:var(--red);text-shadow:0 0 8px rgba(255,51,86,0.5); } .t-high { color:var(--orange); } .t-med  { color:var(--yellow); } .t-low  { color:var(--blue); }
+.cursor::after { content:'▋';animation:blink 1s step-end infinite;color:var(--cyan); }
+
+/* ═══ SCORE CARD ═══ */
+.score-grid { display:none;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:16px; }
+.score-grid.show { display:grid; }
+.score-main { background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden; }
+.score-main::before { content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(0,229,255,0.05),transparent 70%); }
+.score-ring { width:110px;height:110px;position:relative;margin-bottom:12px; }
+.score-ring svg { width:110px;height:110px;transform:rotate(-90deg); }
+.score-ring circle.bg { fill:none;stroke:var(--border2);stroke-width:8; }
+.score-ring circle.fill { fill:none;stroke-width:8;stroke-linecap:round;stroke-dasharray:283;stroke-dashoffset:283;transition:stroke-dashoffset 1.5s ease,stroke 0.5s; }
+.score-num { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-size:1.8rem;font-weight:900; }
+.score-grade { font-family:var(--head);font-size:1rem;letter-spacing:4px;margin-top:4px; }
+.score-label { font-size:0.75rem;color:var(--dim);margin-top:6px; }
+.vuln-summary { background:var(--card);border:1px solid var(--border);border-radius:8px;display:grid;grid-template-columns:repeat(2,1fr);gap:1px;overflow:hidden; }
+.vs-cell { padding:16px;text-align:center;background:var(--card); }
+.vs-cell::after { content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;border-radius:1px; }
+.vs-cell.crit::after { background:var(--red); } .vs-cell.high::after { background:var(--orange); } .vs-cell.med::after  { background:var(--yellow); } .vs-cell.low::after  { background:var(--blue); } .vs-cell.info::after { background:var(--dim); }
+.vs-num { font-family:var(--head);font-size:2rem;font-weight:900;line-height:1;margin-bottom:4px; }
+.vs-cell.crit .vs-num { color:var(--red);text-shadow:0 0 15px rgba(255,51,86,0.4); } .vs-cell.high .vs-num { color:var(--orange); } .vs-cell.med .vs-num { color:var(--yellow); } .vs-cell.low .vs-num { color:var(--blue); }
+.vs-lbl { font-size:0.7rem;color:var(--dim);letter-spacing:2px;font-family:var(--mono); }
+
+/* ═══ FINDINGS ═══ */
+.findings-section { display:none; } .findings-section.show { display:block; }
+.finding-card { background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden;transition:border-color 0.3s; }
+.finding-card:hover { border-color:var(--border2); }
+.finding-card.sev-critical { border-right:3px solid var(--red); } .finding-card.sev-high { border-right:3px solid var(--orange); } .finding-card.sev-medium { border-right:3px solid var(--yellow); } .finding-card.sev-low { border-right:3px solid var(--blue); } .finding-card.sev-info { border-right:3px solid var(--dim); }
+.fc-header { display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer; }
+.sev-badge { font-family:var(--mono);font-size:0.6rem;padding:3px 10px;border-radius:3px;letter-spacing:2px;font-weight:bold;flex-shrink:0; }
+.sev-critical { background:rgba(255,51,86,0.15);color:var(--red);border:1px solid rgba(255,51,86,0.25); } .sev-high { background:rgba(255,140,0,0.15);color:var(--orange);border:1px solid rgba(255,140,0,0.25); } .sev-medium { background:rgba(255,229,0,0.12);color:var(--yellow);border:1px solid rgba(255,229,0,0.2); } .sev-low { background:rgba(68,136,255,0.12);color:var(--blue);border:1px solid rgba(68,136,255,0.2); } .sev-info { background:rgba(42,64,85,0.4);color:var(--dim);border:1px solid var(--border); }
+.fc-title { flex:1;font-size:0.92rem;font-weight:700;color:#d0e8ff; }
+.fc-module { font-family:var(--mono);font-size:0.6rem;color:var(--dim);flex-shrink:0; }
+.cvss-score { font-family:var(--head);font-size:0.9rem;font-weight:700;flex-shrink:0; }
+.fc-toggle { color:var(--dim);font-size:0.8rem;transition:transform 0.3s; }
+.finding-card.open .fc-toggle { transform:rotate(180deg); }
+.fc-body { display:none;padding:0 18px 18px;border-top:1px solid var(--border);margin-top:0; }
+.finding-card.open .fc-body { display:block; }
+.fc-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px; }
+.fc-field label { font-family:var(--mono);font-size:0.6rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:5px; }
+.fc-field .fc-val { font-size:0.82rem;color:var(--text);line-height:1.6; }
+.fc-field.full { grid-column:1 / -1; }
+.cvss-bar { height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:8px; }
+.cvss-fill { height:100%;border-radius:3px;transition:width 1s ease 0.5s; }
+.fc-tags { display:flex;flex-wrap:wrap;gap:6px;margin-top:8px; }
+.tag { font-family:var(--mono);font-size:0.6rem;padding:2px 8px;border-radius:3px;background:rgba(0,229,255,0.07);color:var(--cyan);border:1px solid rgba(0,229,255,0.12); }
+
+/* ═══ REPORT ACTIONS ═══ */
+.report-actions { display:none;gap:10px;flex-wrap:wrap;margin-bottom:16px; } .report-actions.show { display:flex; }
+.btn-action { flex:1;min-width:140px;background:transparent;border:1px solid var(--border2);color:var(--text);font-family:var(--ar);font-size:0.82rem;font-weight:500;padding:10px 16px;border-radius:6px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px; }
+.btn-action:hover { border-color:rgba(0,229,255,0.25);background:rgba(0,229,255,0.04);color:var(--cyan); }
+
+/* ═══ DISCLAIMER ═══ */
+.disclaimer { background:rgba(255,140,0,0.04);border:1px solid rgba(255,140,0,0.12);border-radius:6px;padding:12px 18px;font-size:0.78rem;color:rgba(255,140,0,0.6);text-align:center;font-family:var(--mono); }
+
+@media(max-width:600px){
+  .score-grid.show { grid-template-columns:1fr; }
+  .fc-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hex-logo">
+    <div class="hex-ring">
+      <svg viewBox="0 0 80 80"><polygon points="40,4 74,22 74,58 40,76 6,58 6,22" fill="none" stroke="rgba(0,229,255,0.15)" stroke-width="1.5" stroke-dasharray="4 3"/></svg>
+      <svg viewBox="0 0 80 80" style="animation-direction:reverse;animation-duration:8s"><polygon points="40,10 68,26 68,58 40,70 12,58 12,26" fill="none" stroke="rgba(0,229,255,0.08)" stroke-width="1"/></svg>
+      <div class="hex-inner">🔍</div>
+    </div>
+    <div class="brand-name">BUG BOUNTY RECON</div>
+    <div class="brand-sub">PROFESSIONAL SECURITY RECONNAISSANCE — v3.0</div>
+  </div>
+
+  <div class="header-stats">
+    <div class="hstat"><div class="hstat-val">6</div><div class="hstat-lbl">MODULES</div></div>
+    <div class="hstat"><div class="hstat-val">REAL</div><div class="hstat-lbl">CHECKS</div></div>
+    <div class="hstat"><div class="hstat-val">CVSS</div><div class="hstat-lbl">SCORING</div></div>
+    <div class="hstat"><div class="hstat-val">PDF</div><div class="hstat-lbl">EXPORT</div></div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Target -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-head-icon">🎯</span>
+      <span class="panel-head-title">الهدف والإعدادات</span>
+    </div>
+    <div class="panel-body">
+      <div class="target-row">
+        <div class="target-label">TARGET ://</div>
+        <input type="text" id="urlInput" placeholder="example.com أو https://example.com" autocomplete="off" spellcheck="false" />
+        <button class="btn-scan" id="scanBtn" onclick="startScan()">▶ ابدأ الفحص</button>
+        <button class="btn-stop" id="stopBtn" onclick="stopScan()" style="display:none;">⏹ إيقاف</button>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-info">
+          <span id="progMod" class="active-mod">IDLE — في انتظار الفحص</span>
+          <span id="progPct">0%</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score -->
+  <div class="score-grid" id="scoreGrid">
+    <div class="score-main">
+      <div class="score-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="45"/>
+          <circle class="fill" id="scoreCircle" cx="50" cy="50" r="45"/>
+        </svg>
+        <div class="score-num" id="scoreNum">—</div>
+      </div>
+      <div class="score-grade" id="scoreGrade">—</div>
+      <div class="score-label">نتيجة الأمان</div>
+    </div>
+    <div class="vuln-summary">
+      <div class="vs-cell crit"><div class="vs-num" id="vc">0</div><div class="vs-lbl">CRITICAL</div></div>
+      <div class="vs-cell high"><div class="vs-num" id="vh">0</div><div class="vs-lbl">HIGH</div></div>
+      <div class="vs-cell med"> <div class="vs-num" id="vm">0</div><div class="vs-lbl">MEDIUM</div></div>
+      <div class="vs-cell low"> <div class="vs-num" id="vl">0</div><div class="vs-lbl">LOW</div></div>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div class="panel" id="termPanel">
+    <div class="term-chrome">
+      <div class="term-dots">
+        <div class="tdot r"></div><div class="tdot y"></div><div class="tdot g"></div>
+      </div>
+      <div class="term-title" id="termTitle">bug-bounty-recon@kali:~$</div>
+      <div class="term-badge idle" id="termBadge">IDLE</div>
+    </div>
+    <div class="term-body" id="termBody">
+      <div class="tl"><span class="t-dim">██████████████████████████████████████████████████████████</span></div>
+      <div class="tl"><span class="t-dim">█  BUG BOUNTY RECON PRO — أداة الاستطلاع الأمني الحقيقية   █</span></div>
+      <div class="tl"><span class="t-dim">█  CVSS v3.1 Scoring | 40+ Checks | WebSocket Live        █</span></div>
+      <div class="tl"><span class="t-dim">██████████████████████████████████████████████████████████</span></div>
+      <div class="tl"><span class="t-dim">&nbsp;</span></div>
+      <div class="tl"><span class="t-info cursor">$ أدخل الرابط واضغط "ابدأ الفحص"</span></div>
+    </div>
+  </div>
+
+  <!-- Report Actions -->
+  <div class="report-actions" id="reportActions">
+    <button class="btn-action" onclick="exportReport()">📄 تصدير التقرير (HTML)</button>
+    <button class="btn-action" onclick="copyMarkdown()">📋 نسخ Markdown</button>
+    <button class="btn-action" onclick="resetScan()">🔄 فحص جديد</button>
+  </div>
+
+  <!-- Findings -->
+  <div class="findings-section" id="findingsSection">
+    <div class="panel-head" style="background:var(--panel);border:1px solid var(--border);border-radius:8px 8px 0 0;margin-bottom:0;">
+      <span class="panel-head-icon">🐛</span>
+      <span class="panel-head-title">تقرير الثغرات المكتشفة</span>
+    </div>
+    <div id="findingsList" style="margin-top:1px"></div>
+  </div>
+
+  <div class="disclaimer" style="margin-top:16px">
+    ⚠ هذه الأداة حقيقية وتفحص المواقع فعلياً. استخدمها فقط على أهداف تملك إذناً بفحصها (Bug Bounty أو خوادمك الخاصة).
+  </div>
+
+</div>
+
+<script>
+/* ═══ دوال الواجهة (WebSocket) ═══ */
+let ws = null;
+let findings = [];
+let scanStats = { critical:0, high:0, medium:0, low:0, info:0 };
+let currentTarget = '';
+let stopReq = false;
+
+const termBody = document.getElementById('termBody');
+const progFill = document.getElementById('progFill');
+const progMod = document.getElementById('progMod');
+const progPct = document.getElementById('progPct');
+const scanBtn = document.getElementById('scanBtn');
+const stopBtn = document.getElementById('stopBtn');
+const termBadge = document.getElementById('termBadge');
+const termTitle = document.getElementById('termTitle');
+
+function log(msg, cls='t-dim') {
+  const d = document.createElement('div');
+  d.className = 'tl';
+  const time = new Date().toLocaleTimeString('en',{hour12:false});
+  d.innerHTML = `<span class="t-ts">[${time}]</span><span class="${cls}">${msg}</span>`;
+  termBody.appendChild(d);
+  termBody.scrollTop = termBody.scrollHeight;
+}
+
+function setProgress(pct, mod='') {
+  progFill.style.width = pct + '%';
+  progPct.textContent = Math.round(pct) + '%';
+  if (mod) progMod.textContent = mod;
+}
+
+function addFinding(f) {
+  findings.push(f);
+  scanStats[f.severity]++;
+  updateCounters();
+}
+
+function updateCounters() {
+  document.getElementById('vc').textContent = scanStats.critical;
+  document.getElementById('vh').textContent = scanStats.high;
+  document.getElementById('vm').textContent = scanStats.medium;
+  document.getElementById('vl').textContent = scanStats.low;
+}
+
+function computeScore() {
+  const weights = { critical:25, high:15, medium:8, low:3, info:0 };
+  let deduction = 0;
+  for (const [k,v] of Object.entries(scanStats)) deduction += (weights[k]||0) * v;
+  return Math.max(0, Math.min(100, 100 - deduction));
+}
+
+function renderScore(score) {
+  const grade = score>=90?'A+':score>=80?'A':score>=70?'B':score>=60?'C':score>=50?'D':'F';
+  const color = score>=70?'var(--green)':score>=50?'var(--orange)':'var(--red)';
+  const circ = 283;
+  const offset = circ - (circ * score / 100);
+  const circle = document.getElementById('scoreCircle');
+  circle.style.stroke = color;
+  circle.style.strokeDashoffset = offset;
+  const numEl = document.getElementById('scoreNum');
+  numEl.style.color = color;
+  numEl.textContent = score;
+  const gradeEl = document.getElementById('scoreGrade');
+  gradeEl.style.color = color;
+  gradeEl.textContent = 'GRADE: ' + grade;
+  document.getElementById('scoreGrid').classList.add('show');
+}
+
+function renderFindings() {
+  const list = document.getElementById('findingsList');
+  list.innerHTML = '';
+  const order = ['critical','high','medium','low','info'];
+  const sorted = [...findings].sort((a,b) => order.indexOf(a.severity) - order.indexOf(b.severity));
+  sorted.forEach(f => {
+    const cvssColor = f.cvss>=9?'var(--red)':f.cvss>=7?'var(--orange)':f.cvss>=4?'var(--yellow)':f.cvss>0?'var(--blue)':'var(--dim)';
+    const cvssWidth = f.cvss>0 ? (f.cvss/10*100)+'%' : '0%';
+    const card = document.createElement('div');
+    card.className = `finding-card sev-${f.severity}`;
+    card.innerHTML = `
+      <div class="fc-header" onclick="this.parentElement.classList.toggle('open')">
+        <span class="sev-badge sev-${f.severity}">${f.severity.toUpperCase()}</span>
+        <span class="fc-title">${f.title}</span>
+        <span class="fc-module">${f.module}</span>
+        ${f.cvss>0 ? `<span class="cvss-score" style="color:${cvssColor}">CVSS ${f.cvss}</span>` : ''}
+        <span class="fc-toggle">▼</span>
+      </div>
+      <div class="fc-body">
+        ${f.cvss>0 ? `<div style="margin-top:12px">
+          <div style="font-family:var(--mono);font-size:0.6rem;color:var(--dim);margin-bottom:4px">CVSS: ${f.cvss}/10 — ${f.cvssVector}</div>
+          <div class="cvss-bar"><div class="cvss-fill" style="width:${cvssWidth};background:${cvssColor}"></div></div>
+        </div>` : ''}
+        <div class="fc-grid">
+          <div class="fc-field full"><label>📋 الوصف</label><div class="fc-val">${f.description}</div></div>
+          <div class="fc-field"><label>⚡ التأثير</label><div class="fc-val">${f.impact}</div></div>
+          <div class="fc-field"><label>🔧 الإصلاح</label><div class="fc-val">${f.remediation}</div></div>
+          <div class="fc-field"><label>📎 المراجع</label><div class="fc-val">${f.references.join(' • ')}</div></div>
+          <div class="fc-field"><label>🏷️ التصنيفات</label><div class="fc-tags">${f.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+  document.getElementById('findingsSection').classList.add('show');
+}
+
+function finishScan() {
+  const score = computeScore();
+  renderScore(score);
+  renderFindings();
+  document.getElementById('reportActions').classList.add('show');
+  scanBtn.disabled = false;
+  stopBtn.style.display = 'none';
+  termBadge.className = 'term-badge done';
+  termBadge.textContent = 'DONE';
+  termTitle.textContent = `recon@kali:~$ `;
+}
+
+function startScan() {
+  let raw = document.getElementById('urlInput').value.trim();
+  if (!raw) return;
+  if (!raw.startsWith('http')) raw = 'https://' + raw;
+  try { new URL(raw); } catch { log('✖ رابط غير صحيح','t-err'); return; }
+  currentTarget = raw;
+
+  // إعادة تعيين
+  findings = [];
+  scanStats = {critical:0,high:0,medium:0,low:0,info:0};
+  termBody.innerHTML = '';
+  setProgress(0, 'INIT');
+  scanBtn.disabled = true;
+  stopBtn.style.display = 'inline-flex';
+  document.getElementById('scoreGrid').classList.remove('show');
+  document.getElementById('findingsSection').classList.remove('show');
+  document.getElementById('reportActions').classList.remove('show');
+  termBadge.className = 'term-badge live';
+  termBadge.textContent = '● LIVE';
+  termTitle.textContent = `recon@kali:~$ ./scan.sh ${new URL(raw).hostname}`;
+
+  // فتح WebSocket
+  if (ws) ws.close();
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${protocol}://${window.location.host}`);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'scan', target: raw }));
+  };
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'log') log(data.message, data.className);
+    else if (data.type === 'progress') setProgress(data.percent, data.moduleName);
+    else if (data.type === 'finding') addFinding(data.finding);
+    else if (data.type === 'complete') finishScan();
+  };
+
+  ws.onerror = () => log('Connection error', 't-err');
+  ws.onclose = () => {
+    if (!stopReq) {
+      termBadge.className = 'term-badge done';
+      termBadge.textContent = 'DONE';
+    }
+  };
+}
+
+function stopScan() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'stop' }));
+  }
+  stopBtn.disabled = true;
+  log('⏹ طلب إيقاف الفحص...', 't-warn');
+}
+
+function resetScan() {
+  if (ws) ws.close();
+  findings = [];
+  scanStats = {critical:0,high:0,medium:0,low:0,info:0};
+  document.getElementById('scoreGrid').classList.remove('show');
+  document.getElementById('findingsSection').classList.remove('show');
+  document.getElementById('reportActions').classList.remove('show');
+  termBody.innerHTML = '';
+  setProgress(0, 'IDLE');
+  termBadge.className = 'term-badge idle';
+  termBadge.textContent = 'IDLE';
+  termTitle.textContent = 'bug-bounty-recon@kali:~$';
+  scanBtn.disabled = false;
+  stopBtn.style.display = 'none';
+  updateCounters();
+  log('$ جاهز لفحص جديد...', 't-info');
+}
+
+/* ═══ تصدير التقارير ═══ */
+function exportReport() {
+  const score = computeScore();
+  const now = new Date().toLocaleString('ar');
+  const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<title>Bug Bounty Report — ${currentTarget}</title>
+<style>
+body{font-family:Tajawal,sans-serif;background:#0a0c10;color:#b0c8e0;padding:30px;direction:rtl}
+h1{color:#00e5ff;font-size:1.8rem;margin-bottom:4px} .sub{color:#2a4055;font-size:.8rem;margin-bottom:24px}
+.meta{display:flex;gap:20px;background:#070b12;border:1px solid #0f1e2e;border-radius:6px;padding:16px;margin-bottom:20px}
+.m{text-align:center} .mv{font-size:1.5rem;font-weight:900;color:#00e5ff} .ml{font-size:.7rem;color:#2a4055}
+.card{background:#070b12;border:1px solid #0f1e2e;border-radius:6px;margin-bottom:12px;overflow:hidden}
+.ch{padding:12px 16px;display:flex;gap:12px;align-items:center} .cb{padding:0 16px 16px}
+.badge{font-size:.6rem;padding:2px 8px;border-radius:3px;font-weight:700}
+.critical{background:rgba(255,51,86,.15);color:#ff3356;border:1px solid rgba(255,51,86,.25)}
+.high{background:rgba(255,140,0,.15);color:#ff8c00;border:1px solid rgba(255,140,0,.25)}
+.medium{background:rgba(255,229,0,.12);color:#ffe500;border:1px solid rgba(255,229,0,.2)}
+.low{background:rgba(68,136,255,.12);color:#4488ff;border:1px solid rgba(68,136,255,.2)}
+.title{font-weight:700;flex:1;color:#d0e8ff} .cvss{font-weight:900}
+.lbl{font-size:.6rem;color:#2a4055;margin-top:10px;margin-bottom:4px;text-transform:uppercase;letter-spacing:2px}
+.val{font-size:.82rem;line-height:1.6}
+</style></head><body>
+<h1>🔍 Bug Bounty Recon Report</h1>
+<div class="sub">الهدف: ${currentTarget} — ${now}</div>
+<div class="meta">
+  <div class="m"><div class="mv">${score}</div><div class="ml">SECURITY SCORE</div></div>
+  <div class="m"><div class="mv" style="color:#ff3356">${scanStats.critical}</div><div class="ml">CRITICAL</div></div>
+  <div class="m"><div class="mv" style="color:#ff8c00">${scanStats.high}</div><div class="ml">HIGH</div></div>
+  <div class="m"><div class="mv" style="color:#ffe500">${scanStats.medium}</div><div class="ml">MEDIUM</div></div>
+  <div class="m"><div class="mv" style="color:#4488ff">${scanStats.low}</div><div class="ml">LOW</div></div>
+</div>
+${findings.map(f=>`
+<div class="card">
+  <div class="ch">
+    <span class="badge ${f.severity}">${f.severity.toUpperCase()}</span>
+    <span class="title">${f.title}</span>
+    ${f.cvss>0?`<span class="cvss" style="color:${f.cvss>=9?'#ff3356':f.cvss>=7?'#ff8c00':'#ffe500'}">CVSS ${f.cvss}</span>`:''}
+  </div>
+  <div class="cb">
+    <div class="lbl">الوصف</div><div class="val">${f.description}</div>
+    <div class="lbl">التأثير</div><div class="val">${f.impact}</div>
+    <div class="lbl">الإصلاح</div><div class="val">${f.remediation}</div>
+    <div class="lbl">المراجع</div><div class="val">${f.references.join(' • ')}</div>
+    <div class="lbl">Vector</div><div class="val" style="font-family:monospace;font-size:.72rem;color:#2a4055">${f.cvssVector}</div>
+  </div>
+</div>`).join('')}
+</body></html>`;
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `recon-report-${new URL(currentTarget).hostname}-${Date.now()}.html`;
+  a.click();
+}
+
+function copyMarkdown() {
+  const lines = [
+    `# Bug Bounty Recon Report`,
+    `**Target:** ${currentTarget}  |  **Date:** ${new Date().toLocaleDateString('ar')}`,
+    `**Security Score:** ${computeScore()}/100`,
+    `**Critical:** ${scanStats.critical} | High: ${scanStats.high} | Medium: ${scanStats.medium} | Low: ${scanStats.low}`,
+    '',
+    ...findings.map(f => [
+      `## [${f.severity.toUpperCase()}] ${f.title}`,
+      `- **CVSS:** ${f.cvss} \`${f.cvssVector}\``,
+      `- **Module:** ${f.module}`,
+      `- **Description:** ${f.description}`,
+      `- **Impact:** ${f.impact}`,
+      `- **Remediation:** ${f.remediation}`,
+      `- **References:** ${f.references.join(', ')}`,
+      ''
+    ].join('\n'))
+  ].join('\n');
+  navigator.clipboard.writeText(lines).then(() => {
+    const btn = document.querySelector('.btn-action:nth-child(2)');
+    btn.textContent = '✅ تم النسخ!';
+    setTimeout(()=>btn.textContent='📋 نسخ Markdown',2000);
+  });
+}
+</script>
+</body>
+        </html>
